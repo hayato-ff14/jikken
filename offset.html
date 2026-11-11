@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ボタンサイズ実験（右オフセット判定版）</title>
+<style>
+    body {
+        font-family: sans-serif;
+        text-align: center;
+        margin: 10px;
+        background: #f5f5f5;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        touch-action: manipulation;
+    }
+
+    .panel {
+        background: white;
+        padding: 15px 10px;
+        border-radius: 10px;
+        max-width: 600px;
+        margin: auto;
+        box-sizing: border-box;
+    }
+
+    #grid {
+        display: grid;
+        grid-template-columns: repeat(3, 110px);
+        grid-template-rows: repeat(3, 110px);
+        gap: 5px;
+        justify-content: center;
+        margin: 20px auto;
+        touch-action: none;
+    }
+
+    .cell {
+        width: 110px;
+        height: 110px;
+        border: 1px solid #ccc;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #fafafa;
+        box-sizing: border-box;
+        touch-action: none;
+        position: relative;
+        overflow: visible;
+    }
+
+    /* 見た目のボタン（常にセルの中央に配置し、直接のクリック判定は持たない） */
+    .number-button {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        min-width: 0;
+        min-height: 0;
+        border: 1px solid #333;
+        background: #dcecff;
+        color: #111;
+        box-sizing: border-box;
+        flex-shrink: 0;
+        font-size: 14px;
+        line-height: 1;
+        pointer-events: none; /* 当たり判定は子の .hit-area が担う */
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .button-label {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    /* 実際に押せる当たり判定領域（見た目のボタンから右にずらす） */
+    .hit-area {
+        position: absolute;
+        top: -1px; /* 親のborder(1px)分を補正して同じサイズ・高さに揃える */
+        left: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        pointer-events: auto;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+        box-sizing: border-box;
+    }
+
+    /* デバッグ確認用：当たり判定を可視化するとき */
+    .show-hitbox .hit-area {
+        outline: 1px dashed rgba(255, 0, 0, 0.7);
+        background: rgba(255, 0, 0, 0.12);
+    }
+
+    button:disabled {
+        opacity: 0.5;
+    }
+
+    input, select {
+        padding: 7px;
+        margin: 5px;
+        font-size: 16px; /* スマホでの入力時自動ズームを防止 */
+    }
+
+    #message {
+        font-size: 20px;
+        font-weight: bold;
+        margin: 15px;
+    }
+
+    .debug-row {
+        font-size: 13px;
+        color: #555;
+        margin: 5px 0;
+    }
+</style>
+</head>
+<body>
+
+<div class="panel">
+    <h1>ボタンサイズ実験</h1>
+
+    <div>
+        参加者ID：
+        <input id="participant" type="text" value="P01">
+    </div>
+
+    <div>
+        1サイズあたりの試行回数：
+        <select id="trialsPerSize">
+            <option value="5">5回</option>
+            <option value="10" selected>10回</option>
+            <option value="20">20回</option>
+        </select>
+    </div>
+
+    <div>
+        右への判定ずらし量（ボタン幅に対する割合）：
+        <select id="offsetPercent" onchange="applySize()">
+            <option value="10">10% 右</option>
+            <option value="15">15% 右</option>
+            <option value="20" selected>20% 右</option>
+            <option value="25">25% 右</option>
+            <option value="30">30% 右</option>
+            <option value="50">50% 右</option>
+        </select>
+    </div>
+
+    <div class="debug-row">
+        <label>
+            <input type="checkbox" id="showHitbox" onchange="toggleHitboxPreview()">
+            当たり判定の位置を赤枠で表示する（確認用）
+        </label>
+    </div>
+
+    <p>ボタンサイズ：5px～105px（10px刻み）</p>
+
+    <button id="startButton" onclick="startExperiment()">
+        実験開始
+    </button>
+
+    <div id="message">実験開始を押してください</div>
+    <div id="progress"></div>
+
+    <div id="grid">
+        <div class="cell"><div class="number-button" data-number="1"><span class="button-label">1</span><div class="hit-area" data-number="1"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="2"><span class="button-label">2</span><div class="hit-area" data-number="2"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="3"><span class="button-label">3</span><div class="hit-area" data-number="3"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="4"><span class="button-label">4</span><div class="hit-area" data-number="4"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="5"><span class="button-label">5</span><div class="hit-area" data-number="5"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="6"><span class="button-label">6</span><div class="hit-area" data-number="6"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="7"><span class="button-label">7</span><div class="hit-area" data-number="7"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="8"><span class="button-label">8</span><div class="hit-area" data-number="8"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="9"><span class="button-label">9</span><div class="hit-area" data-number="9"></div></div></div>
+    </div>
+
+    <button onclick="downloadCSV()">CSVダウンロード</button>
+    <button onclick="location.reload()">リセット</button>
+</div>
+
+
+<script>
+const sizes = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105];
+const buttons = [...document.querySelectorAll(".number-button")];
+const hitAreas = [...document.querySelectorAll(".hit-area")];
+
+let results = [];
+let sizeOrder = [];
+let currentSizeIndex = 0;
+let trialInSize = 0;
+let totalTrial = 0;
+let maxTrialsPerSize = 10;
+let targetNumber = null;
+let startTime = null;
+let running = false;
+let currentSize = 55;
+let currentOffsetPercent = 20;
+let currentOffsetPx = 11;
+
+// 初期表示時にもサイズとオフセットを適用
+sizeOrder = [...sizes];
+currentSizeIndex = 5; // 55px
+applySize();
+
+function toggleHitboxPreview() {
+    const grid = document.getElementById("grid");
+    if (document.getElementById("showHitbox").checked) {
+        grid.classList.add("show-hitbox");
+    } else {
+        grid.classList.remove("show-hitbox");
+    }
+}
+
+function shuffle(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+function startExperiment() {
+    const participant =
+        document.getElementById("participant").value.trim();
+
+    if (!participant) {
+        alert("参加者IDを入力してください");
+        return;
+    }
+
+    maxTrialsPerSize = Number(document.getElementById("trialsPerSize").value) || 10;
+    currentOffsetPercent = Number(document.getElementById("offsetPercent").value) || 20;
+    results = [];
+    sizeOrder = shuffle(sizes);
+    currentSizeIndex = 0;
+    trialInSize = 0;
+    totalTrial = 0;
+    running = true;
+
+    document.getElementById("startButton").disabled = true;
+    document.getElementById("offsetPercent").disabled = true;
+    document.getElementById("trialsPerSize").disabled = true;
+
+    applySize();
+    nextTrial();
+}
+
+function applySize() {
+    currentSize = sizeOrder[currentSizeIndex] || 55;
+    currentOffsetPercent = Number(document.getElementById("offsetPercent").value) || 20;
+    currentOffsetPx = currentSize * (currentOffsetPercent / 100);
+
+    const fontSize = currentSize < 15 ? Math.max(4, currentSize - 2) : 14;
+
+    buttons.forEach(button => {
+        button.style.width = currentSize + "px";
+        button.style.height = currentSize + "px";
+        button.style.fontSize = fontSize + "px";
+
+        const hitArea = button.querySelector(".hit-area");
+        hitArea.style.width = currentSize + "px";
+        hitArea.style.height = currentSize + "px";
+        // 見た目のボタンの左端(-1pxはborder補正)から currentOffsetPx だけ右にずらす
+        hitArea.style.left = (-1 + currentOffsetPx) + "px";
+    });
+}
+
+function nextTrial() {
+    if (!running) return;
+
+    // 1サイズにつき指定回数クリック（タップ）したら次のサイズへ
+    if (trialInSize >= maxTrialsPerSize) {
+        currentSizeIndex++;
+        trialInSize = 0;
+
+        if (currentSizeIndex >= sizes.length) {
+            finishExperiment();
+            return;
+        }
+
+        applySize();
+    }
+
+    // 1～9からランダムに出題
+    targetNumber = Math.floor(Math.random() * 9) + 1;
+
+    document.getElementById("message").textContent =
+        "数字の「" + targetNumber + "」を押してください";
+
+    const totalMaxTrials = sizes.length * maxTrialsPerSize;
+    document.getElementById("progress").textContent =
+        "全体の試行：" + (totalTrial + 1) + " / " + totalMaxTrials;
+
+    requestAnimationFrame(() => {
+        if (running) {
+            startTime = performance.now();
+        }
+    });
+}
+
+hitAreas.forEach(hitArea => {
+    // pointerdown によりPCのマウスクリックとスマホのタッチの両方で触れた瞬間を計測
+    hitArea.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        if (!running || startTime === null) return;
+
+        const endTime = performance.now();
+        const responseTime = endTime - startTime;
+
+        const clickedNumber = Number(hitArea.dataset.number);
+        const isCorrect = clickedNumber === targetNumber;
+
+        // 正解ターゲットの「見た目のボタン」と「右にずらした当たり判定」
+        const targetButton = buttons.find(
+            b => Number(b.dataset.number) === targetNumber
+        );
+        const targetHitArea = targetButton.querySelector(".hit-area");
+
+        // 見た目のボタンの中心座標
+        const targetVisualRect = targetButton.getBoundingClientRect();
+        const targetCenterX = targetVisualRect.left + targetVisualRect.width / 2;
+        const targetCenterY = targetVisualRect.top + targetVisualRect.height / 2;
+
+        // 右にずらした当たり判定の中心座標
+        const targetHitboxRect = targetHitArea.getBoundingClientRect();
+        const hitboxCenterX = targetHitboxRect.left + targetHitboxRect.width / 2;
+        const hitboxCenterY = targetHitboxRect.top + targetHitboxRect.height / 2;
+
+        const clickX = event.clientX;
+        const clickY = event.clientY;
+
+        // 見た目の中心からの距離
+        const dx = clickX - targetCenterX;
+        const dy = clickY - targetCenterY;
+        const centerDistance = Math.sqrt(dx * dx + dy * dy);
+
+        // 当たり判定の中心からの距離
+        const hdx = clickX - hitboxCenterX;
+        const hdy = clickY - hitboxCenterY;
+        const hitboxCenterDistance = Math.sqrt(hdx * hdx + hdy * hdy);
+
+        const clickedButton = hitArea.parentElement;
+        const clickedRect = clickedButton.getBoundingClientRect();
+
+        // 入力デバイスを自動判別（touch: スマホ/タブレット, pen: スタイラス, mouse: PCマウス）
+        const deviceType = event.pointerType === "touch"
+            ? "Smartphone_touch"
+            : (event.pointerType === "pen" ? "Stylus_pen" : "PC_mouse");
+
+        const dpr = window.devicePixelRatio || 1;
+        const screenWidth = window.screen.width;
+        const screenHeight = window.screen.height;
+        const physicalWidth = Math.round(screenWidth * dpr);
+        const physicalHeight = Math.round(screenHeight * dpr);
+
+        // 正誤に関係なくすべてのクリック（タップ）を記録
+        results.push({
+            participant_id:
+                document.getElementById("participant").value,
+            device: deviceType,
+            screen_resolution: screenWidth + "x" + screenHeight,
+            physical_resolution: physicalWidth + "x" + physicalHeight,
+            device_pixel_ratio: dpr,
+            viewport_size: window.innerWidth + "x" + window.innerHeight,
+            button_size_px: currentSize,
+            offset_percent: currentOffsetPercent,
+            offset_right_px: currentOffsetPx.toFixed(2),
+            trial_number: totalTrial + 1,
+            size_trial_number: trialInSize + 1,
+            target_number: targetNumber,
+            clicked_number: clickedNumber,
+            is_correct: isCorrect,
+            response_time_ms: responseTime.toFixed(2),
+            click_x: clickX.toFixed(2),
+            click_y: clickY.toFixed(2),
+            target_center_x: targetCenterX.toFixed(2),
+            target_center_y: targetCenterY.toFixed(2),
+            hitbox_center_x: hitboxCenterX.toFixed(2),
+            hitbox_center_y: hitboxCenterY.toFixed(2),
+            clicked_center_x:
+                (clickedRect.left + clickedRect.width / 2).toFixed(2),
+            clicked_center_y:
+                (clickedRect.top + clickedRect.height / 2).toFixed(2),
+            center_distance_px: centerDistance.toFixed(2),
+            hitbox_center_distance_px: hitboxCenterDistance.toFixed(2),
+            timestamp: new Date().toISOString()
+        });
+
+        totalTrial++;
+        trialInSize++;
+        startTime = null;
+
+        setTimeout(nextTrial, 250);
+    });
+});
+
+function finishExperiment() {
+    running = false;
+    startTime = null;
+
+    document.getElementById("message").textContent =
+        "実験終了！お疲れさまでした。";
+
+    const totalMaxTrials = sizes.length * maxTrialsPerSize;
+    document.getElementById("progress").textContent =
+        "全" + totalMaxTrials + "回の試行が終了しました。";
+
+    document.getElementById("startButton").disabled = false;
+    document.getElementById("offsetPercent").disabled = false;
+    document.getElementById("trialsPerSize").disabled = false;
+}
+
+function downloadCSV() {
+    if (results.length === 0) {
+        alert("記録データがありません");
+        return;
+    }
+
+    const headers = Object.keys(results[0]);
+
+    const csv = [
+        headers.join(","),
+        ...results.map(row =>
+            headers.map(key =>
+                '"' + String(row[key]).replace(/"/g, '""') + '"'
+            ).join(",")
+        )
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "button_size_offset_results.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>
+
