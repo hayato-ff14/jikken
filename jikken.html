@@ -290,6 +290,8 @@ buttons.forEach(button => {
                 (clickedRect.left + clickedRect.width / 2).toFixed(2),
             clicked_center_y:
                 (clickedRect.top + clickedRect.height / 2).toFixed(2),
+            relative_x_px: dx.toFixed(2),
+            relative_y_px: (-dy).toFixed(2),
             center_distance_px: centerDistance.toFixed(2),
             timestamp: new Date().toISOString()
         });
