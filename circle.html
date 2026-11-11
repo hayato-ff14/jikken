@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ボタンサイズ実験（円形ボタン版）</title>
+<style>
+    body {
+        font-family: sans-serif;
+        text-align: center;
+        margin: 10px;
+        background: #f5f5f5;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        touch-action: manipulation;
+    }
+
+    .panel {
+        background: white;
+        padding: 15px 10px;
+        border-radius: 10px;
+        max-width: 600px;
+        margin: auto;
+        box-sizing: border-box;
+    }
+
+    #grid {
+        display: grid;
+        grid-template-columns: repeat(3, 110px);
+        grid-template-rows: repeat(3, 110px);
+        gap: 5px;
+        justify-content: center;
+        margin: 20px auto;
+        touch-action: none;
+    }
+
+    .cell {
+        width: 110px;
+        height: 110px;
+        border: 1px solid #ccc;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #fafafa;
+        box-sizing: border-box;
+        touch-action: none;
+    }
+
+    .number-button {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        min-width: 0;
+        min-height: 0;
+        border: none;
+        background: transparent;
+        color: #111;
+        cursor: pointer;
+        box-sizing: border-box;
+        flex-shrink: 0;
+        font-size: 14px;
+        line-height: 1;
+        overflow: hidden;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    .shape-svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .button-label {
+        position: relative;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .number-button:focus {
+        outline: 2px solid blue;
+    }
+
+    button:disabled {
+        opacity: 0.5;
+    }
+
+    input, select {
+        padding: 7px;
+        margin: 5px;
+        font-size: 16px;
+    }
+
+    #message {
+        font-size: 20px;
+        font-weight: bold;
+        margin: 15px;
+    }
+</style>
+</head>
+<body>
+
+<div class="panel">
+    <h1>ボタンサイズ実験（円形）</h1>
+
+    <div>
+        参加者ID：
+        <input id="participant" type="text" value="P01">
+    </div>
+
+    <div>
+        1サイズあたりの試行回数：
+        <select id="trialsPerSize">
+            <option value="5">5回</option>
+            <option value="10" selected>10回</option>
+            <option value="20">20回</option>
+        </select>
+    </div>
+
+    <p>ボタン形状：円（丸） ／ サイズ：5px～105px（10px刻み）</p>
+
+    <button id="startButton" onclick="startExperiment()">
+        実験開始
+    </button>
+
+    <div id="message">実験開始を押してください</div>
+    <div id="progress"></div>
+
+    <div id="grid">
+        <div class="cell"><button class="number-button" data-number="1"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">1</span></button></div>
+        <div class="cell"><button class="number-button" data-number="2"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">2</span></button></div>
+        <div class="cell"><button class="number-button" data-number="3"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">3</span></button></div>
+        <div class="cell"><button class="number-button" data-number="4"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">4</span></button></div>
+        <div class="cell"><button class="number-button" data-number="5"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">5</span></button></div>
+        <div class="cell"><button class="number-button" data-number="6"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">6</span></button></div>
+        <div class="cell"><button class="number-button" data-number="7"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">7</span></button></div>
+        <div class="cell"><button class="number-button" data-number="8"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">8</span></button></div>
+        <div class="cell"><button class="number-button" data-number="9"><svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="#dcecff" stroke="#333" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><span class="button-label">9</span></button></div>
+    </div>
+
+    <button onclick="downloadCSV()">CSVダウンロード</button>
+    <button onclick="location.reload()">リセット</button>
+</div>
+
+<script>
+const SHAPE_NAME = "circle";
+const sizes = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105];
+const buttons = [...document.querySelectorAll(".number-button")];
+
+let results = [];
+let sizeOrder = [...sizes];
+let currentSizeIndex = 5;
+let trialInSize = 0;
+let totalTrial = 0;
+let maxTrialsPerSize = 10;
+let targetNumber = null;
+let startTime = null;
+let running = false;
+let currentSize = 55;
+
+applySize();
+
+function shuffle(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+function startExperiment() {
+    const participant =
+        document.getElementById("participant").value.trim();
+
+    if (!participant) {
+        alert("参加者IDを入力してください");
+        return;
+    }
+
+    maxTrialsPerSize = Number(document.getElementById("trialsPerSize").value) || 10;
+    results = [];
+    sizeOrder = shuffle(sizes);
+    currentSizeIndex = 0;
+    trialInSize = 0;
+    totalTrial = 0;
+    running = true;
+
+    document.getElementById("startButton").disabled = true;
+
+    applySize();
+    nextTrial();
+}
+
+function applySize() {
+    currentSize = sizeOrder[currentSizeIndex];
+    const fontSize = currentSize < 15 ? Math.max(4, currentSize - 2) : 14;
+
+    buttons.forEach(button => {
+        button.style.width = currentSize + "px";
+        button.style.height = currentSize + "px";
+        button.style.fontSize = fontSize + "px";
+    });
+}
+
+function nextTrial() {
+    if (!running) return;
+
+    if (trialInSize >= maxTrialsPerSize) {
+        currentSizeIndex++;
+        trialInSize = 0;
+
+        if (currentSizeIndex >= sizes.length) {
+            finishExperiment();
+            return;
+        }
+
+        applySize();
+    }
+
+    targetNumber = Math.floor(Math.random() * 9) + 1;
+
+    document.getElementById("message").textContent =
+        "数字の「" + targetNumber + "」を押してください";
+
+    const totalMaxTrials = sizes.length * maxTrialsPerSize;
+    document.getElementById("progress").textContent =
+        "全体の試行：" + (totalTrial + 1) + " / " + totalMaxTrials;
+
+    requestAnimationFrame(() => {
+        if (running) {
+            startTime = performance.now();
+        }
+    });
+}
+
+buttons.forEach(button => {
+    button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        if (!running || startTime === null) return;
+
+        const endTime = performance.now();
+        const responseTime = endTime - startTime;
+
+        const clickedNumber = Number(button.dataset.number);
+        const isCorrect = clickedNumber === targetNumber;
+
+        const targetButton = buttons.find(
+            b => Number(b.dataset.number) === targetNumber
+        );
+
+        const targetRect = targetButton.getBoundingClientRect();
+        const targetCenterX = targetRect.left + targetRect.width / 2;
+        const targetCenterY = targetRect.top + targetRect.height / 2;
+
+        const clickX = event.clientX;
+        const clickY = event.clientY;
+
+        const dx = clickX - targetCenterX;
+        const dy = clickY - targetCenterY;
+        const centerDistance = Math.sqrt(dx * dx + dy * dy);
+
+        const clickedRect = button.getBoundingClientRect();
+
+        const deviceType = event.pointerType === "touch"
+            ? "Smartphone_touch"
+            : (event.pointerType === "pen" ? "Stylus_pen" : "PC_mouse");
+
+        const dpr = window.devicePixelRatio || 1;
+        const screenWidth = window.screen.width;
+        const screenHeight = window.screen.height;
+        const physicalWidth = Math.round(screenWidth * dpr);
+        const physicalHeight = Math.round(screenHeight * dpr);
+
+        results.push({
+            participant_id:
+                document.getElementById("participant").value,
+            device: deviceType,
+            shape: SHAPE_NAME,
+            screen_resolution: screenWidth + "x" + screenHeight,
+            physical_resolution: physicalWidth + "x" + physicalHeight,
+            device_pixel_ratio: dpr,
+            viewport_size: window.innerWidth + "x" + window.innerHeight,
+            button_size_px: currentSize,
+            trial_number: totalTrial + 1,
+            size_trial_number: trialInSize + 1,
+            target_number: targetNumber,
+            clicked_number: clickedNumber,
+            is_correct: isCorrect,
+            response_time_ms: responseTime.toFixed(2),
+            click_x: clickX.toFixed(2),
+            click_y: clickY.toFixed(2),
+            target_center_x: targetCenterX.toFixed(2),
+            target_center_y: targetCenterY.toFixed(2),
+            clicked_center_x:
+                (clickedRect.left + clickedRect.width / 2).toFixed(2),
+            clicked_center_y:
+                (clickedRect.top + clickedRect.height / 2).toFixed(2),
+            relative_x_px: dx.toFixed(2),
+            relative_y_px: (-dy).toFixed(2),
+            center_distance_px: centerDistance.toFixed(2),
+            timestamp: new Date().toISOString()
+        });
+
+        totalTrial++;
+        trialInSize++;
+        startTime = null;
+
+        setTimeout(nextTrial, 250);
+    });
+});
+
+function finishExperiment() {
+    running = false;
+    startTime = null;
+
+    document.getElementById("message").textContent =
+        "実験終了！お疲れさまでした。";
+
+    const totalMaxTrials = sizes.length * maxTrialsPerSize;
+    document.getElementById("progress").textContent =
+        "全" + totalMaxTrials + "回の試行が終了しました。";
+
+    document.getElementById("startButton").disabled = false;
+}
+
+function downloadCSV() {
+    if (results.length === 0) {
+        alert("記録データがありません");
+        return;
+    }
+
+    const headers = Object.keys(results[0]);
+
+    const csv = [
+        headers.join(","),
+        ...results.map(row =>
+            headers.map(key =>
+                '"' + String(row[key]).replace(/"/g, '""') + '"'
+            ).join(",")
+        )
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "button_size_" + SHAPE_NAME + "_results.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>
+
