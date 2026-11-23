@@ -45,8 +45,11 @@
         background: #fafafa;
         box-sizing: border-box;
         touch-action: none;
+        position: relative;
+        overflow: visible;
     }
 
+    /* 見た目のボタン（常にセルの中央に配置し、直接のクリック判定は持たない） */
     .number-button {
         position: relative;
         display: flex;
@@ -58,16 +61,13 @@
         border: none;
         background: transparent;
         color: #111;
-        cursor: pointer;
         box-sizing: border-box;
         flex-shrink: 0;
         font-size: 14px;
         line-height: 1;
-        overflow: hidden;
+        pointer-events: none; /* 当たり判定は子の .hit-area が担う */
         touch-action: none;
         -webkit-tap-highlight-color: transparent;
-        appearance: none;
-        -webkit-appearance: none;
     }
 
     .shape-svg {
@@ -82,11 +82,34 @@
     .button-label {
         position: relative;
         z-index: 1;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
         pointer-events: none;
     }
 
-    .number-button:focus {
-        outline: 2px solid blue;
+    /* 実際に押せる当たり判定領域（見た目のボタンから右にずらす） */
+    .hit-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        pointer-events: auto;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+        box-sizing: border-box;
+        z-index: 2;
+    }
+
+    /* デバッグ確認用：当たり判定を可視化するとき */
+    .show-hitbox .hit-area {
+        outline: 1px dashed rgba(255, 0, 0, 0.7);
+        background: rgba(255, 0, 0, 0.12);
     }
 
     button:disabled {
@@ -103,6 +126,12 @@
         font-size: 20px;
         font-weight: bold;
         margin: 15px;
+    }
+
+    .debug-row {
+        font-size: 13px;
+        color: #555;
+        margin: 5px 0;
     }
 </style>
 </head>
@@ -125,6 +154,26 @@
         </select>
     </div>
 
+    <div>
+        右への判定ずらし量（ボタン幅に対する割合）：
+        <select id="offsetPercent" onchange="applySize()">
+            <option value="0">0%（ずらしなし）</option>
+            <option value="10">10% 右</option>
+            <option value="15">15% 右</option>
+            <option value="20" selected>20% 右</option>
+            <option value="25">25% 右</option>
+            <option value="30">30% 右</option>
+            <option value="50">50% 右</option>
+        </select>
+    </div>
+
+    <div class="debug-row">
+        <label>
+            <input type="checkbox" id="showHitbox" onchange="toggleHitboxPreview()">
+            当たり判定の位置を赤枠で表示する（確認用）
+        </label>
+    </div>
+
     <p>ボタン形状：六角形 ／ サイズ：5px～105px（10px刻み）</p>
 
     <button id="startButton" onclick="startExperiment()">
@@ -135,15 +184,15 @@
     <div id="progress"></div>
 
     <div id="grid">
-        <div class="cell"><button class="number-button" data-number="1"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">1</span></button></div>
-        <div class="cell"><button class="number-button" data-number="2"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">2</span></button></div>
-        <div class="cell"><button class="number-button" data-number="3"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">3</span></button></div>
-        <div class="cell"><button class="number-button" data-number="4"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">4</span></button></div>
-        <div class="cell"><button class="number-button" data-number="5"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">5</span></button></div>
-        <div class="cell"><button class="number-button" data-number="6"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">6</span></button></div>
-        <div class="cell"><button class="number-button" data-number="7"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">7</span></button></div>
-        <div class="cell"><button class="number-button" data-number="8"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">8</span></button></div>
-        <div class="cell"><button class="number-button" data-number="9"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">9</span></button></div>
+        <div class="cell"><div class="number-button" data-number="1"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">1</span><div class="hit-area" data-number="1"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="2"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">2</span><div class="hit-area" data-number="2"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="3"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">3</span><div class="hit-area" data-number="3"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="4"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">4</span><div class="hit-area" data-number="4"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="5"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">5</span><div class="hit-area" data-number="5"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="6"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">6</span><div class="hit-area" data-number="6"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="7"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">7</span><div class="hit-area" data-number="7"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="8"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">8</span><div class="hit-area" data-number="8"></div></div></div>
+        <div class="cell"><div class="number-button" data-number="9"><svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,2 95,26 95,74 50,98 5,74 5,26" fill="#dcecff" stroke="#333" stroke-width="1" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg><span class="button-label">9</span><div class="hit-area" data-number="9"></div></div></div>
     </div>
 
     <button onclick="downloadCSV()">CSVダウンロード</button>
@@ -154,6 +203,7 @@
 const SHAPE_NAME = "hexagon";
 const sizes = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105];
 const buttons = [...document.querySelectorAll(".number-button")];
+const hitAreas = [...document.querySelectorAll(".hit-area")];
 
 let results = [];
 let sizeOrder = [...sizes];
@@ -165,8 +215,19 @@ let targetNumber = null;
 let startTime = null;
 let running = false;
 let currentSize = 55;
+let currentOffsetPercent = 20;
+let currentOffsetPx = 11;
 
 applySize();
+
+function toggleHitboxPreview() {
+    const grid = document.getElementById("grid");
+    if (document.getElementById("showHitbox").checked) {
+        grid.classList.add("show-hitbox");
+    } else {
+        grid.classList.remove("show-hitbox");
+    }
+}
 
 function shuffle(array) {
     const copy = [...array];
@@ -187,6 +248,7 @@ function startExperiment() {
     }
 
     maxTrialsPerSize = Number(document.getElementById("trialsPerSize").value) || 10;
+    currentOffsetPercent = Number(document.getElementById("offsetPercent").value) || 0;
     results = [];
     sizeOrder = shuffle(sizes);
     currentSizeIndex = 0;
@@ -195,19 +257,28 @@ function startExperiment() {
     running = true;
 
     document.getElementById("startButton").disabled = true;
+    document.getElementById("offsetPercent").disabled = true;
+    document.getElementById("trialsPerSize").disabled = true;
 
     applySize();
     nextTrial();
 }
 
 function applySize() {
-    currentSize = sizeOrder[currentSizeIndex];
+    currentSize = sizeOrder[currentSizeIndex] || 55;
+    currentOffsetPercent = Number(document.getElementById("offsetPercent").value) || 0;
+    currentOffsetPx = currentSize * (currentOffsetPercent / 100);
     const fontSize = currentSize < 15 ? Math.max(4, currentSize - 2) : 14;
 
     buttons.forEach(button => {
         button.style.width = currentSize + "px";
         button.style.height = currentSize + "px";
         button.style.fontSize = fontSize + "px";
+
+        const hitArea = button.querySelector(".hit-area");
+        hitArea.style.width = currentSize + "px";
+        hitArea.style.height = currentSize + "px";
+        hitArea.style.left = currentOffsetPx + "px";
     });
 }
 
@@ -242,24 +313,29 @@ function nextTrial() {
     });
 }
 
-buttons.forEach(button => {
-    button.addEventListener("pointerdown", event => {
+hitAreas.forEach(hitArea => {
+    hitArea.addEventListener("pointerdown", event => {
         event.preventDefault();
         if (!running || startTime === null) return;
 
         const endTime = performance.now();
         const responseTime = endTime - startTime;
 
-        const clickedNumber = Number(button.dataset.number);
+        const clickedNumber = Number(hitArea.dataset.number);
         const isCorrect = clickedNumber === targetNumber;
 
         const targetButton = buttons.find(
             b => Number(b.dataset.number) === targetNumber
         );
+        const targetHitArea = targetButton.querySelector(".hit-area");
 
-        const targetRect = targetButton.getBoundingClientRect();
-        const targetCenterX = targetRect.left + targetRect.width / 2;
-        const targetCenterY = targetRect.top + targetRect.height / 2;
+        const targetVisualRect = targetButton.getBoundingClientRect();
+        const targetCenterX = targetVisualRect.left + targetVisualRect.width / 2;
+        const targetCenterY = targetVisualRect.top + targetVisualRect.height / 2;
+
+        const targetHitboxRect = targetHitArea.getBoundingClientRect();
+        const hitboxCenterX = targetHitboxRect.left + targetHitboxRect.width / 2;
+        const hitboxCenterY = targetHitboxRect.top + targetHitboxRect.height / 2;
 
         const clickX = event.clientX;
         const clickY = event.clientY;
@@ -268,7 +344,12 @@ buttons.forEach(button => {
         const dy = clickY - targetCenterY;
         const centerDistance = Math.sqrt(dx * dx + dy * dy);
 
-        const clickedRect = button.getBoundingClientRect();
+        const hdx = clickX - hitboxCenterX;
+        const hdy = clickY - hitboxCenterY;
+        const hitboxCenterDistance = Math.sqrt(hdx * hdx + hdy * hdy);
+
+        const clickedButton = hitArea.parentElement;
+        const clickedRect = clickedButton.getBoundingClientRect();
 
         const deviceType = event.pointerType === "touch"
             ? "Smartphone_touch"
@@ -290,6 +371,8 @@ buttons.forEach(button => {
             device_pixel_ratio: dpr,
             viewport_size: window.innerWidth + "x" + window.innerHeight,
             button_size_px: currentSize,
+            offset_percent: currentOffsetPercent,
+            offset_right_px: currentOffsetPx.toFixed(2),
             trial_number: totalTrial + 1,
             size_trial_number: trialInSize + 1,
             target_number: targetNumber,
@@ -300,6 +383,8 @@ buttons.forEach(button => {
             click_y: clickY.toFixed(2),
             target_center_x: targetCenterX.toFixed(2),
             target_center_y: targetCenterY.toFixed(2),
+            hitbox_center_x: hitboxCenterX.toFixed(2),
+            hitbox_center_y: hitboxCenterY.toFixed(2),
             clicked_center_x:
                 (clickedRect.left + clickedRect.width / 2).toFixed(2),
             clicked_center_y:
@@ -307,6 +392,9 @@ buttons.forEach(button => {
             relative_x_px: dx.toFixed(2),
             relative_y_px: (-dy).toFixed(2),
             center_distance_px: centerDistance.toFixed(2),
+            hitbox_relative_x_px: hdx.toFixed(2),
+            hitbox_relative_y_px: (-hdy).toFixed(2),
+            hitbox_center_distance_px: hitboxCenterDistance.toFixed(2),
             timestamp: new Date().toISOString()
         });
 
@@ -330,6 +418,8 @@ function finishExperiment() {
         "全" + totalMaxTrials + "回の試行が終了しました。";
 
     document.getElementById("startButton").disabled = false;
+    document.getElementById("offsetPercent").disabled = false;
+    document.getElementById("trialsPerSize").disabled = false;
 }
 
 function downloadCSV() {
@@ -366,4 +456,3 @@ function downloadCSV() {
 
 </body>
 </html>
-
