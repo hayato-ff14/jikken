@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ボタンサイズ実験（右オフセット判定版）</title>
+<title>ボタンサイズ実験（四角・段階オフセット版）</title>
 <style>
     body {
         font-family: sans-serif;
@@ -65,7 +65,7 @@
         flex-shrink: 0;
         font-size: 14px;
         line-height: 1;
-        pointer-events: none; /* 当たり判定は子の .hit-area が担う */
+        pointer-events: none;
         touch-action: none;
         -webkit-tap-highlight-color: transparent;
     }
@@ -83,8 +83,8 @@
     /* 実際に押せる当たり判定領域（見た目のボタンから右にずらす） */
     .hit-area {
         position: absolute;
-        top: -1px; /* 親のborder(1px)分を補正して同じサイズ・高さに揃える */
-        left: 0;
+        top: -1px;
+        left: -1px;
         width: 100%;
         height: 100%;
         cursor: pointer;
@@ -92,6 +92,7 @@
         touch-action: none;
         -webkit-tap-highlight-color: transparent;
         box-sizing: border-box;
+        z-index: 2;
     }
 
     /* デバッグ確認用：当たり判定を可視化するとき */
@@ -107,7 +108,7 @@
     input, select {
         padding: 7px;
         margin: 5px;
-        font-size: 16px; /* スマホでの入力時自動ズームを防止 */
+        font-size: 16px;
     }
 
     #message {
@@ -126,7 +127,7 @@
 <body>
 
 <div class="panel">
-    <h1>ボタンサイズ実験</h1>
+    <h1>ボタンサイズ実験（四角）</h1>
 
     <div>
         参加者ID：
@@ -136,21 +137,10 @@
     <div>
         1サイズあたりの試行回数：
         <select id="trialsPerSize">
+            <option value="3">3回</option>
             <option value="5">5回</option>
             <option value="10" selected>10回</option>
             <option value="20">20回</option>
-        </select>
-    </div>
-
-    <div>
-        右への判定ずらし量（ボタン幅に対する割合）：
-        <select id="offsetPercent" onchange="applySize()">
-            <option value="10">10% 右</option>
-            <option value="15">15% 右</option>
-            <option value="20" selected>20% 右</option>
-            <option value="25">25% 右</option>
-            <option value="30">30% 右</option>
-            <option value="50">50% 右</option>
         </select>
     </div>
 
@@ -161,7 +151,7 @@
         </label>
     </div>
 
-    <p>ボタンサイズ：5px～105px（10px刻み）</p>
+    <p>ボタンサイズ：5px～105px（10px刻み）<br>判定推移：0%（通常）→ 10%右 → 20%右</p>
 
     <button id="startButton" onclick="startExperiment()">
         実験開始
@@ -186,15 +176,17 @@
     <button onclick="location.reload()">リセット</button>
 </div>
 
-
 <script>
+const SHAPE_NAME = "square";
 const sizes = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105];
+const offsetStages = [0, 10, 20]; // 0% -> 10% -> 20% の3段階を順番に実施
 const buttons = [...document.querySelectorAll(".number-button")];
 const hitAreas = [...document.querySelectorAll(".hit-area")];
 
 let results = [];
-let sizeOrder = [];
-let currentSizeIndex = 0;
+let sizeOrder = [...sizes];
+let currentStageIndex = 0;
+let currentSizeIndex = 5;
 let trialInSize = 0;
 let totalTrial = 0;
 let maxTrialsPerSize = 10;
@@ -202,12 +194,9 @@ let targetNumber = null;
 let startTime = null;
 let running = false;
 let currentSize = 55;
-let currentOffsetPercent = 20;
-let currentOffsetPx = 11;
+let currentOffsetPercent = 0;
+let currentOffsetPx = 0;
 
-// 初期表示時にもサイズとオフセットを適用
-sizeOrder = [...sizes];
-currentSizeIndex = 5; // 55px
 applySize();
 
 function toggleHitboxPreview() {
@@ -238,8 +227,8 @@ function startExperiment() {
     }
 
     maxTrialsPerSize = Number(document.getElementById("trialsPerSize").value) || 10;
-    currentOffsetPercent = Number(document.getElementById("offsetPercent").value) || 20;
     results = [];
+    currentStageIndex = 0;
     sizeOrder = shuffle(sizes);
     currentSizeIndex = 0;
     trialInSize = 0;
@@ -247,7 +236,6 @@ function startExperiment() {
     running = true;
 
     document.getElementById("startButton").disabled = true;
-    document.getElementById("offsetPercent").disabled = true;
     document.getElementById("trialsPerSize").disabled = true;
 
     applySize();
@@ -256,7 +244,7 @@ function startExperiment() {
 
 function applySize() {
     currentSize = sizeOrder[currentSizeIndex] || 55;
-    currentOffsetPercent = Number(document.getElementById("offsetPercent").value) || 20;
+    currentOffsetPercent = offsetStages[currentStageIndex] ?? 0;
     currentOffsetPx = currentSize * (currentOffsetPercent / 100);
 
     const fontSize = currentSize < 15 ? Math.max(4, currentSize - 2) : 14;
@@ -282,9 +270,17 @@ function nextTrial() {
         currentSizeIndex++;
         trialInSize = 0;
 
+        // 全11サイズが終わったら次のオフセット段階（0% -> 10% -> 20%）へ
         if (currentSizeIndex >= sizes.length) {
-            finishExperiment();
-            return;
+            currentStageIndex++;
+            currentSizeIndex = 0;
+
+            if (currentStageIndex >= offsetStages.length) {
+                finishExperiment();
+                return;
+            }
+
+            sizeOrder = shuffle(sizes);
         }
 
         applySize();
@@ -296,9 +292,10 @@ function nextTrial() {
     document.getElementById("message").textContent =
         "数字の「" + targetNumber + "」を押してください";
 
-    const totalMaxTrials = sizes.length * maxTrialsPerSize;
+    const totalMaxTrials = offsetStages.length * sizes.length * maxTrialsPerSize;
     document.getElementById("progress").textContent =
-        "全体の試行：" + (totalTrial + 1) + " / " + totalMaxTrials;
+        "ステージ " + (currentStageIndex + 1) + " / " + offsetStages.length +
+        " ｜ 全体の試行：" + (totalTrial + 1) + " / " + totalMaxTrials;
 
     requestAnimationFrame(() => {
         if (running) {
@@ -308,7 +305,6 @@ function nextTrial() {
 }
 
 hitAreas.forEach(hitArea => {
-    // pointerdown によりPCのマウスクリックとスマホのタッチの両方で触れた瞬間を計測
     hitArea.addEventListener("pointerdown", event => {
         event.preventDefault();
         if (!running || startTime === null) return;
@@ -319,18 +315,15 @@ hitAreas.forEach(hitArea => {
         const clickedNumber = Number(hitArea.dataset.number);
         const isCorrect = clickedNumber === targetNumber;
 
-        // 正解ターゲットの「見た目のボタン」と「右にずらした当たり判定」
         const targetButton = buttons.find(
             b => Number(b.dataset.number) === targetNumber
         );
         const targetHitArea = targetButton.querySelector(".hit-area");
 
-        // 見た目のボタンの中心座標
         const targetVisualRect = targetButton.getBoundingClientRect();
         const targetCenterX = targetVisualRect.left + targetVisualRect.width / 2;
         const targetCenterY = targetVisualRect.top + targetVisualRect.height / 2;
 
-        // 右にずらした当たり判定の中心座標
         const targetHitboxRect = targetHitArea.getBoundingClientRect();
         const hitboxCenterX = targetHitboxRect.left + targetHitboxRect.width / 2;
         const hitboxCenterY = targetHitboxRect.top + targetHitboxRect.height / 2;
@@ -338,12 +331,10 @@ hitAreas.forEach(hitArea => {
         const clickX = event.clientX;
         const clickY = event.clientY;
 
-        // 見た目の中心からの距離
         const dx = clickX - targetCenterX;
         const dy = clickY - targetCenterY;
         const centerDistance = Math.sqrt(dx * dx + dy * dy);
 
-        // 当たり判定の中心からの距離
         const hdx = clickX - hitboxCenterX;
         const hdy = clickY - hitboxCenterY;
         const hitboxCenterDistance = Math.sqrt(hdx * hdx + hdy * hdy);
@@ -351,7 +342,6 @@ hitAreas.forEach(hitArea => {
         const clickedButton = hitArea.parentElement;
         const clickedRect = clickedButton.getBoundingClientRect();
 
-        // 入力デバイスを自動判別（touch: スマホ/タブレット, pen: スタイラス, mouse: PCマウス）
         const deviceType = event.pointerType === "touch"
             ? "Smartphone_touch"
             : (event.pointerType === "pen" ? "Stylus_pen" : "PC_mouse");
@@ -362,18 +352,19 @@ hitAreas.forEach(hitArea => {
         const physicalWidth = Math.round(screenWidth * dpr);
         const physicalHeight = Math.round(screenHeight * dpr);
 
-        // 正誤に関係なくすべてのクリック（タップ）を記録
         results.push({
             participant_id:
                 document.getElementById("participant").value,
             device: deviceType,
+            shape: SHAPE_NAME,
             screen_resolution: screenWidth + "x" + screenHeight,
             physical_resolution: physicalWidth + "x" + physicalHeight,
             device_pixel_ratio: dpr,
             viewport_size: window.innerWidth + "x" + window.innerHeight,
-            button_size_px: currentSize,
+            stage_number: currentStageIndex + 1,
             offset_percent: currentOffsetPercent,
             offset_right_px: currentOffsetPx.toFixed(2),
+            button_size_px: currentSize,
             trial_number: totalTrial + 1,
             size_trial_number: trialInSize + 1,
             target_number: targetNumber,
@@ -410,16 +401,17 @@ hitAreas.forEach(hitArea => {
 function finishExperiment() {
     running = false;
     startTime = null;
+    currentStageIndex = 0;
+    applySize();
 
     document.getElementById("message").textContent =
         "実験終了！お疲れさまでした。";
 
-    const totalMaxTrials = sizes.length * maxTrialsPerSize;
+    const totalMaxTrials = offsetStages.length * sizes.length * maxTrialsPerSize;
     document.getElementById("progress").textContent =
         "全" + totalMaxTrials + "回の試行が終了しました。";
 
     document.getElementById("startButton").disabled = false;
-    document.getElementById("offsetPercent").disabled = false;
     document.getElementById("trialsPerSize").disabled = false;
 }
 
@@ -457,4 +449,3 @@ function downloadCSV() {
 
 </body>
 </html>
-
